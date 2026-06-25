@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Loop — Status</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+<style>
+:root{
+  --bg:#0d1117; --card:#161b22; --line:#222b36; --ink:#e6edf3; --muted:#8b949e;
+  --pos:#2ea043; --neg:#f85149; --warn:#d29922; --accent:#388bfd;
+  --c1:#388bfd; --c2:#db6d28; --c3:#2ea043; --c4:#a371f7; --c5:#e3b341; --gap:12px; --r:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:1200px;margin:0 auto;padding:var(--gap)}
+header.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;background:linear-gradient(135deg,#161b22,#0d1117);border:1px solid var(--line);border-radius:var(--r);margin-bottom:var(--gap)}
+header.top h1{font-size:17px;font-weight:700;letter-spacing:.2px}
+header.top .sub{font-size:12px;color:var(--muted)}
+.pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px}
+.pill.on{background:rgba(46,160,67,.15);color:var(--pos);border:1px solid rgba(46,160,67,.4)}
+.pill.off{background:rgba(248,81,73,.15);color:var(--neg);border:1px solid rgba(248,81,73,.4)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--gap);margin-bottom:var(--gap)}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .v{font-size:22px;font-weight:800;margin-top:4px}
+.kpi .s{font-size:12px;margin-top:2px;color:var(--muted)}
+.pos{color:var(--pos)} .neg{color:var(--neg)} .warnc{color:var(--warn)}
+.grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:var(--gap);margin-bottom:var(--gap)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.card h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--ink)}
+.card canvas{max-height:300px}
+.health{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.h{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:#0d1117;border:1px solid var(--line);border-radius:10px}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none}
+.dot.ok{background:var(--pos)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--neg)}
+.h .hl{font-size:12.5px;font-weight:700} .h .hd{font-size:11.5px;color:var(--muted)}
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:560px}
+thead th{position:sticky;top:0;text-align:left;padding:9px 10px;border-bottom:2px solid var(--line);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;white-space:nowrap;background:var(--card)}
+tbody td{padding:9px 10px;border-bottom:1px solid #1b222b;white-space:nowrap}
+tbody tr:hover{background:#0f151c}
+.tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px}
+.tag.eq{background:rgba(56,139,253,.15);color:var(--c1)} .tag.opt{background:rgba(163,113,247,.15);color:var(--c4)} .tag.intr{background:rgba(219,109,40,.15);color:var(--c2)}
+.tag.LIVE{background:rgba(46,160,67,.15);color:var(--pos)} .tag.PROBATION{background:rgba(210,153,34,.15);color:var(--warn)}
+.tag.rh{background:rgba(46,160,67,.12);color:var(--pos)} .tag.PAPER{background:rgba(56,139,253,.12);color:var(--c1)}
+.flag{font-size:11px;color:var(--warn)}
+.seg{display:inline-flex;gap:4px;margin:2px 0 12px}
+.seg button{font-size:12px;padding:6px 12px;border:1px solid var(--line);background:#0d1117;color:var(--muted);border-radius:8px;cursor:pointer}
+.seg button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+footer{font-size:11px;color:var(--muted);text-align:center;padding:14px 0 4px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}header.top h1{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>📈 Autonomous Trading Loop — Status</h1>
+      <div class="sub" id="sub"></div>
+    </div>
+    <div id="regimepill"></div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Return vs QQQ by arm</h3>
+      <div class="seg" id="seg"></div>
+      <canvas id="retChart"></canvas>
+    </div>
+    <div class="card">
+      <h3>Book value by sleeve</h3>
+      <canvas id="bookChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:var(--gap)">
+    <h3>System health</h3>
+    <div class="health" id="health"></div>
+  </div>
+
+  <div class="card">
+    <h3>Arm standings <span style="font-weight:400;color:var(--muted);font-size:11px">(tap a header to sort)</span></h3>
+    <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <footer>Self-contained snapshot · regenerate with <code>python3 build_dashboard.py</code> · paper money only — not investment advice</footer>
+</div>
+
+<script>
+const D = {"generated": "2026-06-24T16:30-05:00", "scoreboard_updated": "Wed 06/24 04:28 PM CT", "regime_on": true, "macro": {"date": "2026-06-24", "generated": "2026-06-24T08:00", "vix": 18.98, "vix3m": 19.57, "vix_inverted": false, "vix_z": -0.34, "curve_10y2y": 0.34, "curve_z": -2.6, "dgs10": 4.51, "dgs10_z": 1.57, "event_today": null, "geo_severity": 2, "geo_headline": "Fragile US-Iran ceasefire holds but tested: Iran's disputed Jun 20 Hormuz closure easing as tankers resume and crude slips to ~$75", "no_new_entries": false, "risk_off": true, "size_scale": 0.5, "earnings_blackout": ["MU"]}, "snapshot": {"n": 1650, "built": "2026-06-24T08:28", "age_hours": 8.035018007777778, "spy_regime": true}, "heartbeat": {"generated_at": "2026-06-24T16:30:06-05:00", "age_hours": 1.8004722222222222e-05, "files": {"macro_brief.json": "2026-06-24T08:00:02-05:00", "scoreboard.txt": "2026-06-24T16:28:32-05:00", "trading_memory.md": "2026-06-24T16:23:48-05:00", "paper_rsi2_log.csv": "2026-06-24T14:59:14-05:00", "paper_rsi2b_log.csv": "2026-06-24T15:00:10-05:00", "paper_macd_log.csv": "2026-06-24T15:01:33-05:00", "paper_macdb_log.csv": "2026-06-24T15:02:31-05:00", "paper_orb_log.csv": "2026-06-24T14:55:33-05:00"}}, "kpis": {"book_total": 1749594.78, "book_eq": 136976.12, "book_opt": 515262.89, "book_intr": 597355.77, "book_rh": 500000.0, "leader": "D (+27.92%)", "n_arms": 25, "n_anomalies": 0}, "arms": [{"group": "Equity/ETF", "code": "A", "name": "Your 276-ETF system (30-min)", "equity": 4933.21, "seed": 5000.0, "ret": -1.34, "qqq": 0.38, "vs_pts": -1.72, "holdings": "AALG,COZX,CRDU,LABX", "asof": "06-24 16:04", "flag": "", "status": "LIVE"}, {"group": "Equity/ETF", "code": "B", "name": "Gated Engine TQQQ/SOXL (daily)", "equity": 6169.95, "seed": 5000.0, "ret": 23.4, "qqq": 0.19, "vs_pts": 23.21, "holdings": "SOXL", "asof": "06-24 14:55", "flag": "", "status": "LIVE"}, {"group": "Equity/ETF", "code": "C", "name": "A + SPY kill-switch", "equity": 4956.49, "seed": 5000.0, "ret": -0.87, "qqq": 0.38, "vs_pts": -1.25, "holdings": "SGOV/cash", "asof": "06-24 16:15", "flag": "", "status": "LIVE"}, {"group": "Equity/ETF", "code": "D", "name": "B + SPY kill-switch", "equity": 6396.09, "seed": 5000.0, "ret": 27.92, "qqq": 0.79, "vs_pts": 27.13, "holdings": "SOXL", "asof": "06-24 05:34", "flag": "", "status": "LIVE"}, {"group": "Equity/ETF", "code": "E", "name": "Turn-of-Month QQQ", "equity": 5008.34, "seed": 5000.0, "ret": 0.17, "qqq": 0.13, "vs_pts": 0.04, "holdings": "QQQ", "asof": "06-24 14:57", "flag": "", "status": "LIVE"}, {"group": "Equity/ETF", "code": "F", "name": "B + vol-target sizing", "equity": 4963.37, "seed": 5000.0, "ret": -0.73, "qqq": -1.1, "vs_pts": 0.37, "holdings": "SOXL", "asof": "06-24 14:58", "flag": "", "status": "LIVE"}, {"group": "Equity/ETF", "code": "JC MIO", "name": "MarketInOut reclaim (equities)", "equity": 4824.9, "seed": 5000.0, "ret": -3.5, "qqq": 0.32, "vs_pts": -3.82, "holdings": "KMI,NEE,TSM,UPS,XEL", "asof": "06-24 14:59", "flag": "", "status": "LIVE"}, {"group": "Equity/ETF", "code": "VWAP", "name": "VWAP Momentum", "equity": 99723.77, "seed": 5000.0, "ret": -0.28, "qqq": -4.05, "vs_pts": 3.77, "holdings": "SGOV/cash", "asof": "06-24 16:25", "flag": "", "status": "LIVE"}, {"group": "Options", "code": "CALL-MB", "name": "Momentum Breakout (calls)", "equity": 76343.31, "seed": 100000.0, "ret": -23.66, "qqq": -1.1, "vs_pts": -22.56, "holdings": "AIP,ALAB,INTC", "asof": "06-24 14:00", "flag": "", "status": "LIVE"}, {"group": "Options", "code": "CALL-HC", "name": "52wk-High Momentum (calls)", "equity": 70183.5, "seed": 100000.0, "ret": -29.82, "qqq": -1.1, "vs_pts": -28.72, "holdings": "AIP,ALAB,KEEL,STX", "asof": "06-24 14:08", "flag": "", "status": "LIVE"}, {"group": "Options", "code": "CALL-TR", "name": "Turtle Roll (calls)", "equity": 91694.45, "seed": 100000.0, "ret": -8.31, "qqq": -1.1, "vs_pts": -7.21, "holdings": "ALAB,INTC,RIOT", "asof": "06-24 14:16", "flag": "", "status": "LIVE"}, {"group": "Options", "code": "CALL-MAC", "name": "MACD Momentum (calls)", "equity": 93633.22, "seed": 100000.0, "ret": -6.37, "qqq": -1.1, "vs_pts": -5.27, "holdings": "INTC,KEEL,MRVL,RXT", "asof": "06-24 14:24", "flag": "", "status": "LIVE"}, {"group": "Options", "code": "CALL-RSL", "name": "RS Leader (calls)", "equity": 89634.06, "seed": 100000.0, "ret": -10.37, "qqq": -1.1, "vs_pts": -9.27, "holdings": "FCEL,PENG,RXT", "asof": "06-24 14:32", "flag": "", "status": "LIVE"}, {"group": "Options", "code": "CALL-DC55", "name": "Donchian-55 Turtle (calls)", "equity": 93774.35, "seed": 100000.0, "ret": -6.23, "qqq": -1.1, "vs_pts": -5.13, "holdings": "AIP,ALAB,ICHR", "asof": "06-24 14:40", "flag": "", "status": "LIVE"}, {"group": "Intraday", "code": "RSI2", "name": "RSI(2) Mean Reversion", "equity": 99973.44, "seed": 5000.0, "ret": -0.03, "qqq": -4.12, "vs_pts": 4.09, "holdings": "AA,AAON,AAPL,ALMU,AAOI,ACDC,ADEA,ADM,ADTN", "asof": "2026-06-24T14:56", "status": "PROBATION", "flag": ""}, {"group": "Intraday", "code": "RSI2B", "name": "RSI(2)-B (sweep-tuned)", "equity": 100001.54, "seed": 5000.0, "ret": 0.0, "qqq": -4.02, "vs_pts": 4.02, "holdings": "AAOI,AAPL,ACDC,ADEA,ADM,ADTN,AEHR,AESI,AEVA", "asof": "2026-06-24T14:57", "status": "PROBATION", "flag": ""}, {"group": "Intraday", "code": "MACD", "name": "MACD Momentum", "equity": 100014.82, "seed": 5000.0, "ret": 0.01, "qqq": -4.05, "vs_pts": 4.06, "holdings": "DLTR,MO,TFC,IHRT,NTST,CMBT", "asof": "2026-06-24T14:58", "status": "PROBATION", "flag": ""}, {"group": "Intraday", "code": "MACDB", "name": "MACD-B (sweep-tuned)", "equity": 99983.35, "seed": 5000.0, "ret": -0.02, "qqq": -4.05, "vs_pts": 4.03, "holdings": "DLTR,REG,BUD,GLBE,WY,MO,EVC,MAC,TFC,NNN,VRNS,BNL,IHRT,BEPC,NTST", "asof": "2026-06-24T14:59", "status": "PROBATION", "flag": ""}, {"group": "Intraday", "code": "ORB", "name": "Opening-Range Breakout", "equity": 97332.61, "seed": 5000.0, "ret": -2.67, "qqq": -4.19, "vs_pts": 1.52, "holdings": "CASH", "asof": "2026-06-24T14:55", "status": "FAIL", "flag": ""}, {"group": "Intraday", "code": "INVERSE", "name": "Inverse-ETF Downturn", "equity": 100050.01, "seed": 5000.0, "ret": 0.05, "qqq": -4.23, "vs_pts": 4.28, "holdings": "CASH", "asof": "2026-06-24T14:53", "status": "PROBATION", "flag": ""}, {"group": "RH Options", "code": "RH-TRB", "name": "RH Turtle-Roll Breakout", "equity": 100000.0, "seed": 100000.0, "ret": null, "qqq": null, "vs_pts": null, "holdings": "CASH", "asof": "", "status": "PAPER", "flag": ""}, {"group": "RH Options", "code": "RH-PB", "name": "RH 20-EMA Pullback", "equity": 100000.0, "seed": 100000.0, "ret": null, "qqq": null, "vs_pts": null, "holdings": "CASH", "asof": "", "status": "PAPER", "flag": ""}, {"group": "RH Options", "code": "RH-PED", "name": "RH Post-Earnings Drift", "equity": 100000.0, "seed": 100000.0, "ret": null, "qqq": null, "vs_pts": null, "holdings": "CASH", "asof": "", "status": "PAPER", "flag": ""}, {"group": "RH Options", "code": "RH-RSL2", "name": "RH RS-Leader New-High", "equity": 100000.0, "seed": 100000.0, "ret": null, "qqq": null, "vs_pts": null, "holdings": "CASH", "asof": "", "status": "PAPER", "flag": ""}, {"group": "RH Options", "code": "RH-GAP", "name": "RH Range/ADR Expansion", "equity": 100000.0, "seed": 100000.0, "ret": null, "qqq": null, "vs_pts": null, "holdings": "CASH", "asof": "", "status": "PAPER", "flag": ""}], "health": [{"label": "Regime gate", "status": "ok", "detail": "ON \u2014 SPY > 200-day SMA (risk-on)"}, {"label": "Macro gate", "status": "ok", "detail": "Entries allowed \u00b7 size 50% \u00b7 no event"}, {"label": "Heartbeat", "status": "ok", "detail": "Loop heartbeat 0.0h old"}, {"label": "Universe snapshot", "status": "ok", "detail": "1650 names \u00b7 built 2026-06-24T08:28"}, {"label": "Ledger vs broker drift", "status": "warn", "detail": "Not yet checked this session \u2014 run preflight_audit.py for the live reconciliation."}, {"label": "Corrupt-seed ledgers", "status": "ok", "detail": "none"}]};
+const COLORS=['#388bfd','#db6d28','#2ea043','#a371f7','#e3b341','#6e7681'];
+const fmtUSD=v=> (v>=1e6?'$'+(v/1e6).toFixed(2)+'M': v>=1e3?'$'+(v/1e3).toFixed(1)+'K':'$'+(v||0).toFixed(0));
+const pct=v=> (v==null?'—':(v>=0?'+':'')+v.toFixed(2)+'%');
+
+// ---- header + regime ----
+document.getElementById('sub').textContent =
+  'Generated '+D.generated.replace('T',' ')+'  ·  scoreboard '+(D.scoreboard_updated||'—');
+document.getElementById('regimepill').innerHTML =
+  '<span class="pill '+(D.regime_on?'on':'off')+'">'+(D.regime_on?'Regime ON':'Regime OFF')+'</span>';
+
+// ---- KPIs ----
+const k=D.kpis;
+const kpis=[
+  {l:'Total book',v:fmtUSD(k.book_total),s:'across '+k.n_arms+' arms'},
+  {l:'Leader',v:k.leader,s:'vs benchmark'},
+  {l:'Equity / ETF',v:fmtUSD(k.book_eq),s:'7 arms · $5k seed'},
+  {l:'Options (existing)',v:fmtUSD(k.book_opt),s:'6 call arms · $100k'},
+  {l:'Intraday suite',v:fmtUSD(k.book_intr),s:'5 arms · live 06-22'},
+  {l:'RH calls (new)',v:fmtUSD(k.book_rh),s:'5 paper-sim · $100k'},
+  {l:'Data anomalies',v:k.n_anomalies,s:k.n_anomalies?'corrupt seeds — fix first':'all ledgers clean',bad:k.n_anomalies>0},
+];
+document.getElementById('kpis').innerHTML = kpis.map(x=>
+  '<div class="kpi"><div class="l">'+x.l+'</div><div class="v '+(x.bad?'neg':'')+'">'+x.v+'</div><div class="s">'+x.s+'</div></div>').join('');
+
+// ---- health ----
+document.getElementById('health').innerHTML = D.health.map(h=>
+  '<div class="h"><div class="dot '+h.status+'"></div><div><div class="hl">'+h.label+'</div><div class="hd">'+h.detail+'</div></div></div>').join('');
+
+// ---- book doughnut ----
+new Chart(document.getElementById('bookChart'),{type:'doughnut',
+  data:{labels:['Equity/ETF','Options','Intraday','RH Options'],datasets:[{data:[k.book_eq,k.book_opt,k.book_intr,k.book_rh],
+    backgroundColor:['#388bfd','#a371f7','#db6d28','#2ea043'],borderColor:'#161b22',borderWidth:2}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+    plugins:{legend:{position:'bottom',labels:{color:'#8b949e',usePointStyle:true,padding:14}},
+      tooltip:{callbacks:{label:c=>c.label+': '+fmtUSD(c.parsed)}}}}});
+
+// ---- returns bar (filterable by sleeve) ----
+let retChart=null, sleeve='All';
+function drawRet(){
+  const arms=D.arms.filter(a=>a.ret!=null && !a.flag && (sleeve==='All'||a.group===sleeve));
+  arms.sort((a,b)=>b.ret-a.ret);
+  const ctx=document.getElementById('retChart');
+  if(retChart) retChart.destroy();
+  retChart=new Chart(ctx,{type:'bar',
+    data:{labels:arms.map(a=>a.code),datasets:[
+      {label:'Arm return %',data:arms.map(a=>a.ret),backgroundColor:arms.map(a=>a.ret>=0?'#2ea043cc':'#f85149cc'),borderRadius:4},
+      {label:'QQQ %',data:arms.map(a=>a.qqq),backgroundColor:'#6e768166',borderRadius:4},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#8b949e',usePointStyle:true}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+pct(c.parsed.y)}}},
+      scales:{x:{ticks:{color:'#8b949e'},grid:{display:false}},
+              y:{ticks:{color:'#8b949e',callback:v=>v+'%'},grid:{color:'#1b222b'}}}}});
+}
+const sleeves=['All','Equity/ETF','Options','Intraday','RH Options'];
+document.getElementById('seg').innerHTML=sleeves.map(s=>'<button class="'+(s==='All'?'active':'')+'" data-s="'+s+'">'+s+'</button>').join('');
+document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{
+  sleeve=b.dataset.s;document.querySelectorAll('#seg button').forEach(x=>x.classList.remove('active'));b.classList.add('active');drawRet();});
+drawRet();
+
+// ---- standings table (sortable) ----
+const cols=[
+  {f:'code',l:'Arm'},{f:'name',l:'Strategy'},{f:'group',l:'Sleeve'},
+  {f:'equity',l:'Equity',n:1},{f:'ret',l:'Return',n:1},{f:'qqq',l:'Bench',n:1},
+  {f:'vs_pts',l:'vs Bench',n:1},{f:'status',l:'Status'},{f:'holdings',l:'Holding'},{f:'asof',l:'As of'}];
+let sortF='ret',sortD=-1;
+function cell(a,c){
+  if(c.f==='group'){const m={'Equity/ETF':'eq','Options':'opt','Intraday':'intr','RH Options':'rh'};return '<span class="tag '+(m[a.group]||'eq')+'">'+a.group+'</span>';}
+  if(c.f==='status'){return '<span class="tag '+(a.status||'LIVE')+'">'+(a.status||'LIVE')+'</span>';}
+  if(c.f==='equity')return fmtUSD(a.equity);
+  if(c.f==='ret'||c.f==='qqq')return '<span class="'+((a[c.f]||0)>=0?'pos':'neg')+'">'+pct(a[c.f])+'</span>';
+  if(c.f==='vs_pts')return a.vs_pts==null?'—':'<span class="'+(a.vs_pts>=0?'pos':'neg')+'">'+(a.vs_pts>=0?'+':'')+a.vs_pts.toFixed(2)+'</span>';
+  if(c.f==='name')return a.name+(a.flag?'<div class="flag">⚠ '+a.flag+'</div>':'');
+  return a[c.f]==null?'—':a[c.f];
+}
+function drawTable(){
+  document.querySelector('#tbl thead').innerHTML='<tr>'+cols.map(c=>'<th data-f="'+c.f+'">'+c.l+(sortF===c.f?(sortD<0?' ▼':' ▲'):'')+'</th>').join('')+'</tr>';
+  const rows=[...D.arms].sort((a,b)=>{let x=a[sortF],y=b[sortF];if(x==null)return 1;if(y==null)return -1;return (x<y?-1:x>y?1:0)*sortD;});
+  document.querySelector('#tbl tbody').innerHTML=rows.map(a=>'<tr>'+cols.map(c=>'<td>'+cell(a,c)+'</td>').join('')+'</tr>').join('');
+  document.querySelectorAll('#tbl thead th').forEach(th=>th.onclick=()=>{const f=th.dataset.f;if(sortF===f)sortD*=-1;else{sortF=f;sortD=-1;}drawTable();});
+}
+drawTable();
+</script>
+</body>
+</html>
